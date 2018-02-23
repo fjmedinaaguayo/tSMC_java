@@ -83,7 +83,6 @@ public class tSMC_Algo {
         List<Double> relCessList=new ArrayList();
         List<Double> gammaList=new ArrayList();
         List<Integer> intermDist=new ArrayList();
-        List<Double> timesResamp=new ArrayList();
         List<Double> logZList=new ArrayList<>();
 
 
@@ -165,7 +164,6 @@ public class tSMC_Algo {
                 if(ess/N<alpha) {
 
                     logZ+=Utils.logSumExp(PSt.logW);
-                    timesResamp.add((t+1.0+(interm+0.0)/10));
                     PSt=resampling.resample(PSt);
                 }
                 essList.add(ess);
@@ -222,7 +220,6 @@ public class tSMC_Algo {
         System.out.println("Elapsed time:" + (endTime - startTime)/60000 + " minutes");
         System.out.println("ESS: "+essList);
         System.out.println("Relative CESS: "+relCessList);
-        System.out.println("Resampling times: "+timesResamp);
         System.out.println("Estimate log normalising constant: "+logZList);
         System.out.println("Gamma: "+gammaList);
         System.out.println("Intermediate Distns: "+intermDist);
