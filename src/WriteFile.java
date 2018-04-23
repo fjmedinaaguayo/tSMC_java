@@ -48,4 +48,37 @@ public class WriteFile{
             System.out.println("Error in closing the BufferedWriter, "+ex);
         }
     }
+
+    public static void writeMCMC(String filename, List y){
+
+        int iters=y.size();
+        int N=((ArrayList) y.get(0)).size();
+
+        try{
+
+            for(int i=0; i<N; i++){
+
+                BufferedWriter bw = null;
+                File file = new File(filename+"_"+i+".txt");
+
+                if (!file.exists()) {
+                    file.createNewFile();
+                }
+
+                FileWriter fw = new FileWriter(file);
+                bw = new BufferedWriter(fw);
+
+                for(int j=0; j<iters; j++){
+
+                    bw.write(String.valueOf( ((ArrayList) y.get(j)).get(i) ));
+                    bw.newLine();
+                }
+
+                if(bw!=null)
+                    bw.close();
+            }
+        }catch(Exception ex){
+            System.out.println("Error writing file, "+ex);
+        }
+    }
 }
