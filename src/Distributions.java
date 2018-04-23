@@ -906,6 +906,9 @@ class Proposal3GaussLogit2 extends Kernel{
         S2_logitW=Utils.idMatrix(s2_logitW/(3*d-1),d-1);
         S2_Means=Utils.idMatrix(s2_Means/(3*d-1),d);
         S2_logPrecs=Utils.idMatrix(s2_logPrecs/(3*d-1),d);
+    }
+
+    Proposal3GaussLogit2(String filename){
 
         S2_full=ReadFile.readMatrix("Sigma_MCMC.txt");
     }
