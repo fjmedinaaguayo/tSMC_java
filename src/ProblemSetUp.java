@@ -66,6 +66,8 @@ abstract class Problem {
 //            ArrayList<Object> aux=(ArrayList) y_copy.get(ySize-1);
 //            ArrayList<Double> temp=new ArrayList<>(ySize/3);
 //
+//
+//
 //            if((int) aux.get(0)==0){
 //
 //                ArrayList<Integer> labels=(ArrayList<Integer>) aux.get(1);
@@ -222,7 +224,8 @@ class SMC2 extends Problem {
         this.t0=0;
         this.T=1;
         int nObs=Obs.size();
-        double s2_logitW=2.0, s2_Means=3.0, s2_logPrecs=2.0;
+        //double s2_logitW=2.0, s2_Means=3.0, s2_logPrecs=2.0;
+        double s2_logitW=100.0, s2_Means=150.0, s2_logPrecs=100.0;
 
         double prior_mean=Utils.mean(Obs), prior_sd=Utils.range(Obs);
         double prior_shape=2, prior_rate=prior_shape*Math.pow(Utils.range(Obs)/10.0,2);
@@ -284,7 +287,37 @@ class TripletMixGauss {
         else{
 
             logWeights=Utils.LogitToLog(x.subList(0,size-1));
-            logWeights.add(Math.log(1.0-Math.exp(Utils.logSumExp(logWeights))) );
+            logWeights.add(Math.log(1.0-Math.exp(Utils.logSumExp(logWeights))));
+
+        }
+
+        this.logWeightsFull=logWeights;
+        this.Means=new ArrayList(x.subList(size-1,2*size-1));
+        this.logPrecisions=new ArrayList(x.subList(2*size-1,3*size-1));
+    }
+
+    TripletMixGauss(List x,String type){
+
+        int size=(x.size()+1)/3;
+        this.size=size;
+
+        List logWeights=new ArrayList<Double>(size);
+
+        if(this.size==1){
+
+            logWeights.add(0.0);
+        }
+        else{
+
+            if(type=="Logit2"){
+
+                logWeights=Utils.LogitToLog(Utils.Logit2ToLogit(x.subList(0,size-1)));
+            }else{
+
+                logWeights=Utils.LogitToLog(x.subList(0,size-1));
+            }
+            logWeights.add(Math.log(1.0-Math.exp(Utils.logSumExp(logWeights))));
+
         }
 
         this.logWeightsFull=logWeights;
@@ -377,6 +410,16 @@ class TripletMixGauss {
     List asSingleVector(){
 
         List y=new ArrayList(Utils.LogToLogit(this.logWeightsFull.subList(0,this.size-1)));
+
+        y.addAll(this.Means);
+        y.addAll(this.logPrecisions);
+
+        return y;
+    }
+
+    List asSingleVectorLogit2(){
+
+        List y=new ArrayList(this.getLogit2Weights());
 
         y.addAll(this.Means);
         y.addAll(this.logPrecisions);

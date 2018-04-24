@@ -91,15 +91,19 @@ class aGRWMetropK extends Kernel {
     List<ArrayList<Object>> Draw(List<ArrayList<Object>> x0){
 
         int moveInd=1;
+        double iters=0, itersMax=1e+1;
         if(moveInd==0)
             return x0;
 
         double mean_accept=0;
-        List<ArrayList<Object>> x_final=x0;
+        List<Object> y=new ArrayList();
+        y.add(x0);
 
-        while(mean_accept<0.18 || mean_accept>0.22){
+        //while(mean_accept<0.08 || mean_accept>0.12){
+        while(iters<itersMax){
 
-            List<ArrayList<Object>> x=q.Draw(x0);
+            final List<ArrayList<Object>> x_temp=(ArrayList) y.get((int) iters);
+            List<ArrayList<Object>> x=q.Draw(x_temp);
             int xSize=x0.size();
 
             ArrayList<Double> logRatio=new ArrayList(Collections.nCopies(xSize, 0));
@@ -107,8 +111,8 @@ class aGRWMetropK extends Kernel {
             IntStream.range(0, x0.size()).parallel().
                     forEach(i -> {
 
-                double logRatioDen = pi.logDensity(x0.get(i)) + q.logDensity(x.get(i), x0.get(i));
-                double logRatioNum = pi.logDensity(x.get(i)) + q.logDensity(x0.get(i), x.get(i));
+                double logRatioDen = pi.logDensity(x_temp.get(i)) + q.logDensity(x.get(i), x_temp.get(i));
+                double logRatioNum = pi.logDensity(x.get(i)) + q.logDensity(x_temp.get(i), x.get(i));
 
                 if(logRatioNum==-1*Double.POSITIVE_INFINITY)
                     logRatio.set(i,-1*Double.POSITIVE_INFINITY);
@@ -116,28 +120,31 @@ class aGRWMetropK extends Kernel {
                     logRatio.set(i,logRatioNum-logRatioDen);
 
                 if(Double.isNaN(logRatio.get(i))){
-                    logRatio.set(i, pi.logDensity(x.get(i)) + q.logDensity(x0.get(i), x.get(i))
-                            -pi.logDensity(x0.get(i)) - q.logDensity(x.get(i), x0.get(i)) );
+                    logRatio.set(i, pi.logDensity(x.get(i)) + q.logDensity(x_temp.get(i), x.get(i))
+                            -pi.logDensity(x_temp.get(i)) - q.logDensity(x.get(i), x_temp.get(i)) );
 
                     //logRatio.set(i,-1*Double.POSITIVE_INFINITY);
                 }
 
                 if(Math.log(Math.random())>logRatio.get(i))
-                    x.set(i,(ArrayList) x0.get(i));
+                    x.set(i,(ArrayList) x_temp.get(i));
                 else
                     accept.set(i,1);
 
             });
 
-            mean_accept=Utils.mean(accept);
-            System.out.print("MCMC accept: "+mean_accept+", ");
+            iters+=1;
+            mean_accept+=Utils.mean(accept)/itersMax;
+            //System.out.print("MCMC accept: "+mean_accept+", ");
 
-            ((Proposal3GaussLogit2) q).setPropVarFactor(Math.max(mean_accept,1e-5)/0.20);
+            //((Proposal3GaussTLogit2) q).setPropVarFactor(Math.max(mean_accept,1e-5)/0.1);
 
-            x_final=x;
+            y.add(x);
         }
+        System.out.print("MCMC accept: "+mean_accept+", ");
 
-        return x_final;
+        //WriteFile.writeMCMC("MCMC_"+(int) itersMax,y);
+        return (List<ArrayList<Object>>) y.get((int) itersMax);
     }
 
     double logDensity(List<Object> x, List<Object> x0){
@@ -799,7 +806,7 @@ class Proposal3Gauss extends Kernel{
         double logDetJacobn=0, logDens=0;
 
         TripletMixGauss triplet=new TripletMixGauss(x.subList(0,x.size()-1));
-        TripletMixGauss triplet0=new TripletMixGauss(x.subList(0,x0.size()-1));
+        TripletMixGauss triplet0=new TripletMixGauss(x0.subList(0,x0.size()-1));
 
         double[] x0_Means=Utils.convertDoubles(triplet0.getMeans());
         double[] x0_logPrecs=Utils.convertDoubles(triplet0.getLogPrecisions());
@@ -892,12 +899,24 @@ class Proposal3GaussLogit2 extends Kernel{
     private double[][] S2_logitW;
     private double[][] S2_Means;
     private double[][] S2_logPrecs;
+    private double[][] S2_full;
 
     Proposal3GaussLogit2(double s2_logitW, double s2_Means, double s2_logPrecs, int d) {
 
         S2_logitW=Utils.idMatrix(s2_logitW/(3*d-1),d-1);
         S2_Means=Utils.idMatrix(s2_Means/(3*d-1),d);
         S2_logPrecs=Utils.idMatrix(s2_logPrecs/(3*d-1),d);
+    }
+
+    Proposal3GaussLogit2(String filename){
+
+        S2_full=ReadFile.readMatrix("Sigma_MCMC.txt");
+    }
+
+    Proposal3GaussLogit2(double[][] Sigma) {
+
+        int d=Sigma[0].length;
+        S2_full=Utils.prod(Sigma,1.0/d);
     }
 
     public void setPropVarFactor(double factor){
@@ -912,37 +931,17 @@ class Proposal3GaussLogit2 extends Kernel{
         double logDetJacobn, logDens;
 
         TripletMixGauss triplet=new TripletMixGauss(x.subList(0,x.size()-1));
-        TripletMixGauss triplet0=new TripletMixGauss(x.subList(0,x0.size()-1));
+        TripletMixGauss triplet0=new TripletMixGauss(x0.subList(0,x0.size()-1));
 
-        double[] x0_Means=Utils.convertDoubles(triplet0.getMeans());
-        double[] x0_logPrecs=Utils.convertDoubles(triplet0.getLogPrecisions());
+        double[] mean0_MVN=Utils.convertDoubles(triplet0.asSingleVectorLogit2());
 
-        Distribution q_Means=new GaussianD(x0_Means,S2_Means);
-        Distribution q_logPrecs=new GaussianD(x0_logPrecs,S2_logPrecs);
+        Distribution q_MVN=new GaussianD(mean0_MVN,S2_full);
 
-        List Means=triplet.getMeans();
+        List logWeights=triplet.getLogWeightsFull();
         List logPrecisions=triplet.getLogPrecisions();
 
-        int M=x.size()/3;
-
-        if(M==1){
-
-            logDetJacobn=-1*((double) logPrecisions.get(M-1));
-            logDens=q_Means.logDensity(Means)+q_logPrecs.logDensity(logPrecisions);
-        }
-        else{
-
-            double[] x0_logit2W=Utils.convertDoubles(triplet0.getLogit2Weights());
-
-            List logit2Weights=triplet.getLogit2Weights();
-            List logWeights=triplet.getLogWeightsFull();
-
-            Distribution q_logit2W=new GaussianD(x0_logit2W,S2_logitW);
-
-            logDens=q_logit2W.logDensity(logit2Weights)+q_Means.logDensity(Means)+q_logPrecs.logDensity(logPrecisions);
-
-            logDetJacobn=-Utils.sum((List<Double>) logPrecisions)-Utils.sum((List<Double>) logWeights);
-        }
+        logDens=q_MVN.logDensity(triplet.asSingleVectorLogit2());
+        logDetJacobn=-Utils.sum((List<Double>) logPrecisions)-Utils.sum((List<Double>) logWeights);
 
         return logDens+logDetJacobn;
     }
@@ -955,43 +954,17 @@ class Proposal3GaussLogit2 extends Kernel{
 
             int M=(x0.get(i).size()+1)/3;
 
-            if(M==1){
+            TripletMixGauss triplet0=new TripletMixGauss(x0.get(i).subList(0,x0.get(i).size()-1));
 
-                double[] x0_Means=Utils.convertDoubles(x0.get(i).subList(0,1));
-                double[] x0_logPrecs=Utils.convertDoubles(x0.get(i).subList(1,2));
+            double[] mean0_MVN=Utils.convertDoubles(triplet0.asSingleVectorLogit2());
 
-                Distribution q_Means=new GaussianD(x0_Means,S2_Means);
-                Distribution q_logPrecs=new GaussianD(x0_logPrecs,S2_logPrecs);
+            Distribution q_MVN=new GaussianD(mean0_MVN,S2_full);
 
-                ArrayList temp=new ArrayList<>(q_Means.Draw(1).get(0));
-                temp.addAll(q_logPrecs.Draw(1).get(0));
+            TripletMixGauss triplet=new TripletMixGauss(q_MVN.Draw(1).get(0),"Logit2");
+            ArrayList temp=new ArrayList<>(triplet.asSingleVector());
+            temp.addAll(x0.get(i).subList(3*M-1,3*M));
 
-                temp.addAll(x0.get(i).subList(2,3));
-
-                x.add(i,temp);
-            }
-            else{
-
-                TripletMixGauss triplet0=new TripletMixGauss(x0.get(i).subList(0,3*M-1));
-
-                double[] x0_logit2W=Utils.convertDoubles(triplet0.getLogit2Weights());
-                double[] x0_Means=Utils.convertDoubles(triplet0.getMeans());
-                double[] x0_logPrecs=Utils.convertDoubles(triplet0.getLogPrecisions());
-
-                Distribution q_logit2W=new GaussianD(x0_logit2W,S2_logitW);
-                Distribution q_Means=new GaussianD(x0_Means,S2_Means);
-                Distribution q_logPrecs=new GaussianD(x0_logPrecs,S2_logPrecs);
-
-                ArrayList<Double> temp1=new ArrayList(q_logit2W.Draw(1).get(0));
-                ArrayList<Object> temp2=new ArrayList<>(Utils.Logit2ToLogit(temp1));
-
-                temp2.addAll(q_Means.Draw(1).get(0));
-                temp2.addAll(q_logPrecs.Draw(1).get(0));
-
-                temp2.addAll(x0.get(i).subList(3*M-1,3*M));
-
-                x.add(i,temp2);
-            }
+            x.add(i,temp);
         }
 
         return x;
@@ -1023,7 +996,7 @@ class Proposal3GaussT extends Kernel{
         double logDetJacobn=0, logDens=0;
 
         TripletMixGauss triplet=new TripletMixGauss(x.subList(0,x.size()-1));
-        TripletMixGauss triplet0=new TripletMixGauss(x.subList(0,x0.size()-1));
+        TripletMixGauss triplet0=new TripletMixGauss(x0.subList(0,x0.size()-1));
 
         double[] x0_Means=Utils.convertDoubles(triplet0.getMeans());
         double[] x0_logPrecs=Utils.convertDoubles(triplet0.getLogPrecisions());

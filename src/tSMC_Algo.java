@@ -11,6 +11,7 @@ public class tSMC_Algo {
     private static Problem problem;
     private static ResamplingScheme resampling=new Systematic();
     private static String filename, inputFile, outputFile, fullOutput;
+    private static int isAnnealAdap=0;
 
     public static void main(String[] args) throws ParseException {
 
@@ -48,6 +49,9 @@ public class tSMC_Algo {
                 alpha= Double.parseDouble(cmd.getOptionValue("a"));
             if(cmd.hasOption("b"))
                 beta= Double.parseDouble(cmd.getOptionValue("b"));
+            if(beta<1 && beta>0)
+                isAnnealAdap=1;
+
             if(cmd.hasOption("pB"))
                 probBirth= Double.parseDouble(cmd.getOptionValue("pB"));
 
@@ -149,9 +153,24 @@ public class tSMC_Algo {
             do {
 
                 interm+=1;
-                logitGammaInc=Secant(t+1, gamma0,logitGammaInc,logWinc,PSt);
+                double gamma1;
+                if(isAnnealAdap==1){
+
+                    logitGammaInc=Secant(t+1, gamma0,logitGammaInc,logWinc,PSt);
+                    gamma1=gamma0+(1-gamma0)*Math.exp(Utils.LogitToLog(logitGammaInc));
+                }
+                else{
+
+                    gamma1=Math.pow((interm+1.0)/((int) beta),1);
+                    for(int k=0; k<N; k++){
+                        logWinc.set(k,(problem.GeomlogPhi_t(1, t+1, PSt.th.get(k).x)
+                                -problem.GeomlogPhi_t(0, t+1, PSt.th.get(k).x))*
+                                (gamma1-gamma0) );
+                    }
+
+                }
+
                 relCessList.add(PSt.relCESS(logWinc));
-                double gamma1=gamma0+(1-gamma0)*Math.exp(Utils.LogitToLog(logitGammaInc));
                 gammaList.add(gamma1);
 
                 System.out.print("gamma_{"+t+"To"+(t+1)+"}("+(interm+1)+"): "+gamma1+", ");
@@ -174,6 +193,7 @@ public class tSMC_Algo {
 
                 if(cmd.hasOption("w")==false){
 
+                    problem.K.set(t,new Proposal3GaussLogit2(PSt.SigmaMatrix()));
 //                    MCMCK MK= new MCMCK(phi,problem.K.get(t));
                     aGRWMetropK MK= new aGRWMetropK(phi,problem.K.get(t));
                     PSt = new ParticleSet(PSt.logW, MK.Draw(PSt.xList()));

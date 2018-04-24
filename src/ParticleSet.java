@@ -168,6 +168,46 @@ public class ParticleSet {
 
         return val;
     }
+
+    double[][] SigmaMatrix(){
+
+        int N=this.th.size();
+        int k=this.th.get(0).x.size()/3;
+
+        double[][] Sigma=new double[3*k-1][3*k-1];
+        List<Double> logNWeights=this.normalisedWeights();
+        List<Double> single_means=new ArrayList<>(3*k-1);
+
+        for(int j=0;j<3*k-1; j++){
+            single_means.add(0.0);
+
+            for(int h=0; h<3*k-1; h++)
+                Sigma[j][h]=0.0;
+        }
+
+
+        for(int i=0; i<N; i++){
+
+            TripletMixGauss triplet=new TripletMixGauss(th.get(i).x.subList(0,3*k-1));
+            List<Double> Particle_i= triplet.asSingleVectorLogit2();
+
+            for(int j=0; j<3*k-1; j++){
+
+                single_means.set(j,single_means.get(j)+Particle_i.get(j)*Math.exp(logNWeights.get(i)));
+                for(int h=0; h<3*k-1; h++){
+                    Sigma[j][h]+=Particle_i.get(j)*Particle_i.get(h)*Math.exp(logNWeights.get(i));
+                }
+            }
+        }
+
+        for(int j=0;j<3*k-1; j++){
+
+            for(int h=0; h<3*k-1; h++)
+                Sigma[j][h]-=single_means.get(j)*single_means.get(h);
+        }
+
+        return Sigma;
+    }
 }
 
 class theta {

@@ -25,6 +25,39 @@ public class ReadFile{
         return lines.toArray(new String[lines.size()]);
     }
 
+    public static double[][] readMatrix(String filename){
+
+        double[][]Matrix=new double[23][23];
+        try{
+
+            FileReader fileReader = new FileReader(filename);
+            BufferedReader bufferedReader = new BufferedReader(fileReader);
+
+            String line = null;
+            String splitBy=",";
+            int row=0;
+
+            String[] lineString;
+
+            while ((line = bufferedReader.readLine()) != null)
+            {
+                lineString = line.split(splitBy);
+                int k = lineString.length;
+
+                for(int i=0; i<k; i++) {
+                    Matrix[row][i]=Double.parseDouble(lineString[i]);
+                }
+                row++;
+            }
+
+            bufferedReader.close();
+        }catch(Exception ex){
+            System.out.println("Error reading matrix, "+ex);
+        }
+
+        return Matrix;
+    }
+
     public List readParticles(String filename) throws IOException{
 
         FileReader fileReader = new FileReader(filename);
