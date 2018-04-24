@@ -201,7 +201,7 @@ class BirthTransf implements Transform {
         theta th=fnInv(y);
         double logDetJ=this.logDetJacobn_aux(th);
 
-        return -logDetJ+Math.log(ySize/3);
+        return -logDetJ;//+Math.log(ySize/3);
     }
 }
 
@@ -395,7 +395,7 @@ class SplitTransf implements Transform {
         theta th=fnInv(y);
         double logDetJ=this.logDetJacobn_aux(th);
 
-        return -logDetJ+Math.log(ySize/3*(ySize/3-1)/2);
+        return -logDetJ;//+Math.log(ySize/3*(ySize/3-1)/2);
     }
 
 }

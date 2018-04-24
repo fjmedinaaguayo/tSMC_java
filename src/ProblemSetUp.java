@@ -20,30 +20,6 @@ abstract class Problem {
             return pi.get(t-1).logDensity(y);
     }
 
-    double logPhi_tm1_t(int t, List<Object> y){
-
-        theta th=G.get(t-1).fnInv(y);
-
-        if(th==null)
-            return -1*Double.POSITIVE_INFINITY;
-        else if(t==1){
-
-            double temp=pi0.logDensity(th.x)+psi.get(0).logDensity(th.u);
-            if(temp!=-1*Double.POSITIVE_INFINITY)
-                temp+=G.get(0).logDetJacobnInv(y);
-
-            return temp;
-        }
-        else{
-
-            double temp=pi.get(t-2).logDensity(th.x)+psi.get(t-1).logDensity(th.u);
-            if(temp!=-1*Double.POSITIVE_INFINITY)
-                temp+=G.get(t-1).logDetJacobnInv(y);
-
-            return temp;
-        }
-    }
-
 //    double logPhi_tm1_t(int t, List<Object> y){
 //
 //        theta th=G.get(t-1).fnInv(y);
@@ -58,65 +34,89 @@ abstract class Problem {
 //
 //            return temp;
 //        }
-//        else if(( pi.get(t-2).logDensity(th.x)+psi.get(t-1).logDensity(th.u) )!=-1*Double.POSITIVE_INFINITY ){
+//        else{
 //
-//            List<Object> y_copy=G.get(t-1).fn(th);
+//            double temp=pi.get(t-2).logDensity(th.x)+psi.get(t-1).logDensity(th.u);
+//            if(temp!=-1*Double.POSITIVE_INFINITY)
+//                temp+=G.get(t-1).logDetJacobnInv(y);
 //
-//            int ySize=y_copy.size();
-//            ArrayList<Object> aux=(ArrayList) y_copy.get(ySize-1);
-//            ArrayList<Double> temp=new ArrayList<>(ySize/3);
-//
-//
-//
-//            if((int) aux.get(0)==0){
-//
-//                ArrayList<Integer> labels=(ArrayList<Integer>) aux.get(1);
-//                int l1=labels.get(0), l2=labels.get(1);
-//
-//                for(int i=0; i<ySize/3-1; i++){
-//
-//                    for(int j=i+1; j<ySize/3; j++){
-//
-//                        labels.set(0,i);
-//                        labels.set(1,j);
-//
-//                        th=G.get(t-1).fnInv(y_copy);
-//
-//                        double temp2=pi.get(t-2).logDensity(th.x)+psi.get(t-1).logDensity(th.u);
-//                        if(temp2==-1*Double.POSITIVE_INFINITY)
-//                            temp.add(temp2);
-//                        else
-//                            temp.add( temp2+G.get(t-1).logDetJacobnInv(y_copy));
-//                    }
-//                }
-//
-//                labels.set(0,l1);
-//                labels.set(1,l2);
-//            }
-//            else{
-//
-//                int l = (int) aux.get(1);
-//
-//                for(int i=0; i<ySize/3; i++){
-//
-//                    aux.set(1,i);
-//                    th=G.get(t-1).fnInv(y_copy);
-//
-//                    double temp2=pi.get(t-2).logDensity(th.x)+psi.get(t-1).logDensity(th.u);
-//                    if(temp2==-1*Double.POSITIVE_INFINITY)
-//                        temp.add(temp2);
-//                    else
-//                        temp.add( temp2+G.get(t-1).logDetJacobnInv(y_copy));
-//                }
-//
-//                aux.set(1,l);
-//            }
-//
-//            return Utils.logSumExp(temp);
+//            return temp;
 //        }
-//
-//        return -1*Double.POSITIVE_INFINITY;
 //    }
+
+    double logPhi_tm1_t(int t, List<Object> y){
+
+        theta th=G.get(t-1).fnInv(y);
+
+        if(th==null)
+            return -1*Double.POSITIVE_INFINITY;
+        else if(t==1){
+
+            double temp=pi0.logDensity(th.x)+psi.get(0).logDensity(th.u);
+            if(temp!=-1*Double.POSITIVE_INFINITY)
+                temp+=G.get(0).logDetJacobnInv(y);
+
+            return temp;
+        }
+        else if(( pi.get(t-2).logDensity(th.x)+psi.get(t-1).logDensity(th.u) )!=-1*Double.POSITIVE_INFINITY ){
+
+            List<Object> y_copy=G.get(t-1).fn(th);
+
+            int ySize=y_copy.size();
+            ArrayList<Object> aux=(ArrayList) y_copy.get(ySize-1);
+            ArrayList<Double> temp=new ArrayList<>(ySize/3);
+
+
+
+            if((int) aux.get(0)==0){
+
+                ArrayList<Integer> labels=(ArrayList<Integer>) aux.get(1);
+                int l1=labels.get(0), l2=labels.get(1);
+
+                for(int i=0; i<ySize/3-1; i++){
+
+                    for(int j=i+1; j<ySize/3; j++){
+
+                        labels.set(0,i);
+                        labels.set(1,j);
+
+                        th=G.get(t-1).fnInv(y_copy);
+
+                        double temp2=pi.get(t-2).logDensity(th.x)+psi.get(t-1).logDensity(th.u);
+                        if(temp2==-1*Double.POSITIVE_INFINITY)
+                            temp.add(temp2);
+                        else
+                            temp.add( temp2+G.get(t-1).logDetJacobnInv(y_copy));
+                    }
+                }
+
+                labels.set(0,l1);
+                labels.set(1,l2);
+            }
+            else{
+
+                int l = (int) aux.get(1);
+
+                for(int i=0; i<ySize/3; i++){
+
+                    aux.set(1,i);
+                    th=G.get(t-1).fnInv(y_copy);
+
+                    double temp2=pi.get(t-2).logDensity(th.x)+psi.get(t-1).logDensity(th.u);
+                    if(temp2==-1*Double.POSITIVE_INFINITY)
+                        temp.add(temp2);
+                    else
+                        temp.add( temp2+G.get(t-1).logDetJacobnInv(y_copy));
+                }
+
+                aux.set(1,l);
+            }
+
+            return Utils.logSumExp(temp);
+        }
+
+        return -1*Double.POSITIVE_INFINITY;
+    }
 
     double GeomlogPhi_t(double gamma, int t, List<Object> y){
 
